@@ -1,4 +1,5 @@
-from collections import OrderedDict, MutableMapping
+from collections import OrderedDict
+from collections.abc import MutableMapping
 from .util import batch_sum, partial_sum, log_mean_exp
 import abc
 from enum import Enum
@@ -13,6 +14,7 @@ class Provenance(Enum):
     OBSERVED = 1
     REUSED = 2
 
+
 class Stochastic(object):
     """Stochastic variables wrap Pytorch Variables to associate a log probability
     density or mass.
@@ -21,6 +23,7 @@ class Stochastic(object):
         value(:obj:Variable): The value of the variable.
         log_prob(:obj:Variable): The log probability mass or density.
     """
+
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractproperty
@@ -46,11 +49,12 @@ class RandomVariable(Stochastic):
         observed(bool): Indicates whether the value was sampled or observed.
     """
 
-    def __init__(self, dist, value, provenance=Provenance.SAMPLED, mask=None,
-                 use_pmf=True):
+    def __init__(
+        self, dist, value, provenance=Provenance.SAMPLED, mask=None, use_pmf=True
+    ):
         self._dist = dist
         self._value = value
-        if use_pmf and hasattr(dist, 'log_pmf'):
+        if use_pmf and hasattr(dist, "log_pmf"):
             self._log_prob = dist.log_pmf(value)
         else:
             self._log_prob = dist.log_prob(value)
@@ -88,8 +92,10 @@ class RandomVariable(Stochastic):
         return self._reparameterized
 
     def __repr__(self):
-        return "%s RandomVariable containing: %s" % (type(self._dist).__name__,
-                                                     repr(self._value))
+        return "%s RandomVariable containing: %s" % (
+            type(self._dist).__name__,
+            repr(self._value),
+        )
 
 
 class Factor(Stochastic):
@@ -176,19 +182,17 @@ class Trace(MutableMapping):
 
     def __setitem__(self, name, node):
         if not isinstance(node, Stochastic):
-            raise TypeError("Argument node must be an instance of "
-                            "probtorch.Stochastic")
+            raise TypeError(
+                "Argument node must be an instance of " "probtorch.Stochastic"
+            )
         if name in self._nodes:
-            raise ValueError("Trace already contains a node with "
-                             "name: " + name)
+            raise ValueError("Trace already contains a node with " "name: " + name)
         if (node.log_prob != node.log_prob).sum() > 0:
-            raise ValueError("NaN log prob encountered in node"
-                             "with name: " + name)
+            raise ValueError("NaN log prob encountered in node" "with name: " + name)
         self._nodes[name] = node
 
     def __delitem__(self, name):
-        raise NotImplementedError("Nodes may not be deleted from a "
-                                  "Trace.")
+        raise NotImplementedError("Nodes may not be deleted from a " "Trace.")
 
     def __len__(self):
         return len(self._nodes)
@@ -209,10 +213,10 @@ class Trace(MutableMapping):
                 dname = type(node).__name__
             if isinstance(node, Factor):
                 dtype = node.log_prob.type()
-                dsize = 'x'.join([str(d) for d in node.log_prob.size()])
+                dsize = "x".join([str(d) for d in node.log_prob.size()])
             else:
                 dtype = node.value.type()
-                dsize = 'x'.join([str(d) for d in node.value.size()])
+                dsize = "x".join([str(d) for d in node.value.size()])
             val_repr = "[%s of size %s]" % (dtype, dsize)
             node_repr = "%s(%s)" % (dname, val_repr)
             item_reprs.append("%s: %s" % (repr(n), node_repr))
@@ -227,8 +231,9 @@ class Trace(MutableMapping):
         node does not have a name attribute, then a unique name is generated.
         """
         if not isinstance(node, Stochastic):
-            raise TypeError("Argument node must be an instance of"
-                            "probtorch.Stochastic")
+            raise TypeError(
+                "Argument node must be an instance of" "probtorch.Stochastic"
+            )
         # construct a new node name
         if isinstance(node, RandomVariable):
             node_name = type(node.dist).__name__.lower()
@@ -236,7 +241,7 @@ class Trace(MutableMapping):
             node_name = type(node).__name__.lower()
         while True:
             node_count = self._counters.get(node_name, 0)
-            name = '%s_%d' % (node_name, node_count)
+            name = "%s_%d" % (node_name, node_count)
             self._counters[node_name] = node_count + 1
             if name not in self._nodes:
                 break
@@ -269,9 +274,9 @@ class Trace(MutableMapping):
 
     def variable(self, Dist, *args, **kwargs):
         """Creates a new RandomVariable node"""
-        name = kwargs.pop('name', None)
-        value = kwargs.pop('value', None)
-        provenance = kwargs.pop('provenance', None)
+        name = kwargs.pop("name", None)
+        value = kwargs.pop("value", None)
+        provenance = kwargs.pop("provenance", None)
         dist = Dist(*args, **kwargs)
         if value is None:
             if dist.has_rsample:
@@ -313,8 +318,10 @@ class Trace(MutableMapping):
         """Returns a generator over reused RandomVariable nodes"""
         for name in self._nodes:
             node = self._nodes[name]
-            if isinstance(node, RandomVariable) and\
-               node.provenance == Provenance.REUSED:
+            if (
+                isinstance(node, RandomVariable)
+                and node.provenance == Provenance.REUSED
+            ):
                 yield name
 
     def observed(self):
@@ -328,8 +335,10 @@ class Trace(MutableMapping):
         """Returns a generator over sampled RandomVariable nodes"""
         for name in self._nodes:
             node = self._nodes[name]
-            if isinstance(node, RandomVariable) and\
-               node.provenance == Provenance.SAMPLED:
+            if (
+                isinstance(node, RandomVariable)
+                and node.provenance == Provenance.SAMPLED
+            ):
                 yield name
 
     def conditioned(self):
@@ -341,8 +350,9 @@ class Trace(MutableMapping):
             if not isinstance(node, RandomVariable) or node.observed:
                 yield name
 
-    def log_joint(self, sample_dims=None, batch_dim=None, nodes=None,
-                  reparameterized=True):
+    def log_joint(
+        self, sample_dims=None, batch_dim=None, nodes=None, reparameterized=True
+    ):
         """Returns the log joint probability, optionally for a subset of nodes.
 
         Arguments:
@@ -357,9 +367,7 @@ class Trace(MutableMapping):
         for n in nodes:
             if n in self._nodes:
                 node = self._nodes[n]
-                log_p = batch_sum(node.log_prob,
-                                  sample_dims,
-                                  batch_dim)
+                log_p = batch_sum(node.log_prob, sample_dims, batch_dim)
                 if batch_dim is not None and node.mask is not None:
                     log_p = log_p * node.mask
                 log_prob = log_prob + log_p
@@ -380,11 +388,12 @@ class Trace(MutableMapping):
             if n in self._nodes:
                 node = self._nodes[n]
                 if not isinstance(node, RandomVariable):
-                    raise ValueError(('Batch averages can only be computed '
-                                      'for random variables.'))
+                    raise ValueError(
+                        ("Batch averages can only be computed " "for random variables.")
+                    )
                 # convert values of size (*, B, **) to size (B, *, 1, **)
                 value = node.value.unsqueeze(batch_dim + 1).transpose(batch_dim, 0)
-                if hasattr(node.dist, 'log_pmf'):
+                if hasattr(node.dist, "log_pmf"):
                     # log pairwise probabilities of size (B, B, *, **)
                     log_pw = node.dist.log_pmf(value).transpose(1, batch_dim + 1)
                 else:
@@ -408,8 +417,9 @@ class Trace(MutableMapping):
                 # log average over pairs (B) or (S, B)
                 log_marginal = log_mean_exp(log_pw_joint, 1).transpose(0, batch_dim)
                 # log product over marginals (B) or (S, B)
-                log_prod_marginal = batch_sum(log_mean_exp(log_pw, 1),
-                                              sample_dim + 1, 0)
+                log_prod_marginal = batch_sum(
+                    log_mean_exp(log_pw, 1), sample_dim + 1, 0
+                )
                 if node.mask is not None:
                     log_marginal = log_marginal * node.mask
                     log_prod_marginal = log_prod_marginal * node.mask
@@ -429,7 +439,7 @@ def _autogen_trace_methods():
 
     # monkey patch relaxed distribtions
     def relaxed_bernoulli_log_pmf(self, value):
-        return (value > self.probs).type('torch.FloatTensor')
+        return (value > self.probs).type("torch.FloatTensor")
 
     def relaxed_categorical_log_pmf(self, value):
         _, max_index = value.max(-1)
@@ -440,13 +450,15 @@ def _autogen_trace_methods():
     _distributions.RelaxedOneHotCategorical.log_pmf = relaxed_categorical_log_pmf
 
     def camel_to_snake(name):
-        s1 = _re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-        return _re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+        s1 = _re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+        return _re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
     for name, obj in _inspect.getmembers(_distributions):
         if hasattr(obj, "__bases__") and issubclass(obj, _distributions.Distribution):
             f_name = camel_to_snake(name).lower()
-            doc="""Generates a random variable of type torch.distributions.%s""" % name
+            doc = (
+                """Generates a random variable of type torch.distributions.%s""" % name
+            )
             try:
                 # try python 3 first
                 asp = _inspect.getfullargspec(obj.__init__)
@@ -455,25 +467,25 @@ def _autogen_trace_methods():
                 asp = _inspect.getargspec(obj.__init__)
 
             arg_split = -len(asp.defaults) if asp.defaults else None
-            args = ', '.join(asp.args[:arg_split])
+            args = ", ".join(asp.args[:arg_split])
 
             if arg_split:
                 pairs = zip(asp.args[arg_split:], asp.defaults)
-                kwargs = ', '.join(['%s=%s' % (n, v) for n, v in pairs])
-                args = args + ', ' + kwargs
+                kwargs = ", ".join(["%s=%s" % (n, v) for n, v in pairs])
+                args = args + ", " + kwargs
 
-            env = {'obj': obj, 'torch': _torch}
-            s = ("""def f({0}, name=None, value=None):
-                    return self.variable(obj, {1}, name=name, value=value)""")
-            input_args = ', '.join(asp.args[1:])
+            env = {"obj": obj, "torch": _torch}
+            s = """def f({0}, name=None, value=None):
+                    return self.variable(obj, {1}, name=name, value=value)"""
+            input_args = ", ".join(asp.args[1:])
             exec(s.format(args, input_args), env)
-            f = env['f']
+            f = env["f"]
             f.__name__ = f_name
             f.__doc__ = doc
             setattr(Trace, f_name, f)
 
     # add alias for relaxed_one_hot_categorical
-    setattr(Trace, 'concrete', Trace.relaxed_one_hot_categorical)
+    setattr(Trace, "concrete", Trace.relaxed_one_hot_categorical)
 
 
 _autogen_trace_methods()
