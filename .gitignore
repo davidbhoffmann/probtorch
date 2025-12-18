@@ -107,3 +107,5 @@ ENV/
 .projectile
 .dir-locals.el
 .flake8rc
+data/
+weights/
