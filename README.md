@@ -49,7 +49,7 @@ Frank and Torr, Philip},
 
 2. Install this repository from source
 ```
-pip install git+git://github.com/probtorch/probtorch
+pip install git+https://github.com/probtorch/probtorch.git
 ```
 
 3. Refer to the `examples/` subdirectory for [Jupyter](http://jupyter.org) notebooks that illustrate usage.
