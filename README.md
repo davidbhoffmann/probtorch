@@ -2,6 +2,7 @@
   <img height="150px" src="docs/source/_static/img/probtorch-logo.png"></a>
 </div>
 
+Test .md
 Probabilistic Torch is library for deep generative models that extends [PyTorch](http://pytorch.org). It is similar in spirit and design goals to [Edward](http://edwardlib.org) and [Pyro](https://github.com/uber/pyro), sharing many design characteristics with the latter.
 
 The design of Probabilistic Torch is intended to be as PyTorch-like as possible. Probabilistic Torch models are written just like you would write any PyTorch model, but make use of three additional constructs:
